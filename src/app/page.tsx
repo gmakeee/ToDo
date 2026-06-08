@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { getTelegramUser, expandTelegramApp } from '@/lib/telegram'
 import { Habit, DailyMotivation } from '@/types'
 import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import HabitList from '@/components/habits/HabitList'
 import StatsView from '@/components/stats/StatsView'
 import AchievementsView from '@/components/achievements/AchievementsView'
@@ -165,8 +164,9 @@ export default function App() {
         )}
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
-        <TabsContent value="home" className="flex-1 overflow-y-auto px-4 py-3 m-0">
+      {/* Page content */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {tab === 'home' && (
           <HabitList
             habits={habits}
             completionCounts={completionCounts}
@@ -174,29 +174,30 @@ export default function App() {
             onPause={handlePauseHabit}
             onDelete={handleDeleteHabit}
           />
-        </TabsContent>
-        <TabsContent value="stats" className="flex-1 overflow-y-auto px-4 py-3 m-0">
-          <StatsView telegramId={telegramId} />
-        </TabsContent>
-        <TabsContent value="achievements" className="flex-1 overflow-y-auto px-4 py-3 m-0">
-          <AchievementsView telegramId={telegramId} />
-        </TabsContent>
+        )}
+        {tab === 'stats' && <StatsView telegramId={telegramId} />}
+        {tab === 'achievements' && <AchievementsView telegramId={telegramId} />}
+      </div>
 
-        <TabsList className="grid grid-cols-3 h-16 rounded-none border-t bg-background mt-auto">
-          <TabsTrigger value="home" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
-            <Home className="w-5 h-5" />
-            <span className="text-xs">Главная</span>
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
-            <BarChart3 className="w-5 h-5" />
-            <span className="text-xs">Статистика</span>
-          </TabsTrigger>
-          <TabsTrigger value="achievements" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
-            <Trophy className="w-5 h-5" />
-            <span className="text-xs">Ачивки</span>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Bottom nav */}
+      <nav className="grid grid-cols-3 h-16 border-t bg-background shrink-0">
+        {([
+          { id: 'home', icon: Home, label: 'Главная' },
+          { id: 'stats', icon: BarChart3, label: 'Статистика' },
+          { id: 'achievements', icon: Trophy, label: 'Ачивки' },
+        ] as const).map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+              tab === id ? 'text-pink-500' : 'text-muted-foreground'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            <span className="text-xs">{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
