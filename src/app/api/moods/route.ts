@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
 
   const db = createServiceClient()
 
-  // Upsert user
   const { data: user } = await db
     .from('users')
     .upsert({ telegram_id, first_name: body.first_name, username: body.username }, { onConflict: 'telegram_id' })
@@ -43,15 +42,15 @@ export async function POST(req: NextRequest) {
 
   if (!user) return NextResponse.json({ error: 'User error' }, { status: 500 })
 
-  // Upsert: one entry per period per day
   const today = new Date().toISOString().split('T')[0]
+
+  // Upsert by (user_id, period, log_date)
   const { data: existing } = await db
     .from('mood_logs')
     .select('id')
     .eq('user_id', user.id)
     .eq('period', period)
-    .gte('logged_at', `${today}T00:00:00Z`)
-    .lt('logged_at', `${today}T23:59:59Z`)
+    .eq('log_date', today)
     .single()
 
   let result
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
   } else {
     const { data } = await db
       .from('mood_logs')
-      .insert({ user_id: user.id, period, mood, mood_score: mood_score ?? null, note: note ?? null })
+      .insert({ user_id: user.id, period, mood, mood_score: mood_score ?? null, note: note ?? null, log_date: today })
       .select()
       .single()
     result = data

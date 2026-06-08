@@ -19,7 +19,8 @@ create table public.mood_logs (
   mood text not null,         -- emoji string
   mood_score smallint check (mood_score between 1 and 5),
   note text,
-  logged_at timestamptz not null default now()
+  logged_at timestamptz not null default now(),
+  log_date date not null default current_date,
+  unique (user_id, period, log_date)
 );
-create unique index on public.mood_logs(user_id, period, (logged_at::date));
 create index on public.mood_logs(user_id, logged_at desc);
