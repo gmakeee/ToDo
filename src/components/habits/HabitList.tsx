@@ -5,13 +5,13 @@ import HabitCard from './HabitCard'
 
 interface Props {
   habits: Habit[]
-  completedToday: Set<string>
+  completionCounts: Map<string, number>
   onComplete: (id: string, mood?: number, note?: string) => void
   onPause: (id: string, pausedUntil: string | null) => void
   onDelete: (id: string) => void
 }
 
-export default function HabitList({ habits, completedToday, onComplete, onPause, onDelete }: Props) {
+export default function HabitList({ habits, completionCounts, onComplete, onPause, onDelete }: Props) {
   const active = habits.filter((h) => !h.is_paused)
   const paused = habits.filter((h) => h.is_paused)
 
@@ -30,7 +30,7 @@ export default function HabitList({ habits, completedToday, onComplete, onPause,
         <HabitCard
           key={habit.id}
           habit={habit}
-          completed={completedToday.has(habit.id)}
+          completedCount={completionCounts.get(habit.id) ?? 0}
           onComplete={onComplete}
           onPause={onPause}
           onDelete={onDelete}
@@ -44,7 +44,7 @@ export default function HabitList({ habits, completedToday, onComplete, onPause,
             <HabitCard
               key={habit.id}
               habit={habit}
-              completed={false}
+              completedCount={0}
               onComplete={onComplete}
               onPause={onPause}
               onDelete={onDelete}

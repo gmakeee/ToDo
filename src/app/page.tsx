@@ -14,7 +14,8 @@ import { Sparkles, BarChart3, Trophy, Home } from 'lucide-react'
 export default function App() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [motivation, setMotivation] = useState<DailyMotivation | null>(null)
-  const [completedToday, setCompletedToday] = useState<Set<string>>(new Set())
+  // habit_id → count of completions in current period
+  const [completionCounts, setCompletionCounts] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('home')
 
@@ -46,9 +47,14 @@ export default function App() {
   }
 
   async function loadTodayCompletions() {
-    const res = await fetch(`/api/completions?user_id=_&telegram_id=${telegramId}&range=1`)
+    const res = await fetch(`/api/completions?telegram_id=${telegramId}&range=1`)
     const data: { habit_id: string }[] = await res.json()
-    setCompletedToday(new Set(data.map((c) => c.habit_id)))
+    // Count completions per habit
+    const counts = new Map<string, number>()
+    for (const c of data) {
+      counts.set(c.habit_id, (counts.get(c.habit_id) ?? 0) + 1)
+    }
+    setCompletionCounts(counts)
     setLoading(false)
   }
 
@@ -60,7 +66,11 @@ export default function App() {
     })
     if (res.ok) {
       const data = await res.json()
-      setCompletedToday((prev) => new Set([...prev, habitId]))
+      setCompletionCounts((prev) => {
+        const next = new Map(prev)
+        next.set(habitId, (next.get(habitId) ?? 0) + 1)
+        return next
+      })
       setHabits((prev) =>
         prev.map((h) => (h.id === habitId ? { ...h, streak: data.streak } : h))
       )
@@ -96,8 +106,12 @@ export default function App() {
   }
 
   const activeHabits = habits.filter((h) => !h.is_paused)
+  // Count habits where completionCount >= times_per_period
+  const fullyDoneCount = activeHabits.filter(
+    (h) => (completionCounts.get(h.id) ?? 0) >= h.times_per_period
+  ).length
   const todayProgress = activeHabits.length
-    ? Math.round((completedToday.size / activeHabits.length) * 100)
+    ? Math.round((fullyDoneCount / activeHabits.length) * 100)
     : 0
 
   if (loading) {
@@ -120,7 +134,6 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background max-w-md mx-auto">
-      {/* Header */}
       <div className="px-4 pt-6 pb-4 bg-gradient-to-br from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20">
         <div className="flex items-center justify-between mb-3">
           <div>
@@ -136,7 +149,7 @@ export default function App() {
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Прогресс дня</span>
-              <span>{completedToday.size}/{activeHabits.length}</span>
+              <span>{fullyDoneCount}/{activeHabits.length}</span>
             </div>
             <Progress value={todayProgress} className="h-2" />
           </div>
@@ -156,7 +169,7 @@ export default function App() {
         <TabsContent value="home" className="flex-1 overflow-y-auto px-4 py-3 m-0">
           <HabitList
             habits={habits}
-            completedToday={completedToday}
+            completionCounts={completionCounts}
             onComplete={handleComplete}
             onPause={handlePauseHabit}
             onDelete={handleDeleteHabit}
