@@ -9,9 +9,10 @@ interface Props {
   onComplete: (id: string, mood?: number, note?: string) => void
   onPause: (id: string, pausedUntil: string | null) => void
   onDelete: (id: string) => void
+  onEdit: (habit: Habit) => void
 }
 
-export default function HabitList({ habits, completionCounts, onComplete, onPause, onDelete }: Props) {
+export default function HabitList({ habits, completionCounts, onComplete, onPause, onDelete, onEdit }: Props) {
   const active = habits.filter((h) => !h.is_paused)
   const paused = habits.filter((h) => h.is_paused)
 
@@ -34,6 +35,7 @@ export default function HabitList({ habits, completionCounts, onComplete, onPaus
           onComplete={onComplete}
           onPause={onPause}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       ))}
 
@@ -48,6 +50,7 @@ export default function HabitList({ habits, completionCounts, onComplete, onPaus
               onComplete={onComplete}
               onPause={onPause}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
         </>

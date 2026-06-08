@@ -6,6 +6,7 @@ import { Habit, DailyMotivation } from '@/types'
 import { Progress } from '@/components/ui/progress'
 import HabitList from '@/components/habits/HabitList'
 import AddHabitSheet from '@/components/habits/AddHabitSheet'
+import EditHabitSheet from '@/components/habits/EditHabitSheet'
 import StatsView from '@/components/stats/StatsView'
 import AchievementsView from '@/components/achievements/AchievementsView'
 import TodoView from '@/components/todo/TodoView'
@@ -24,6 +25,7 @@ export default function App() {
   const [mainTab, setMainTab] = useState<MainTab>('habits')
   const [habitSub, setHabitSub] = useState<HabitSubTab>('list')
   const [showHabitMenu, setShowHabitMenu] = useState(false)
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
 
   const tgUser = getTelegramUser()
   const telegramId = tgUser?.id
@@ -92,6 +94,15 @@ export default function App() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: habitId, is_paused: !!pausedUntil, paused_until: pausedUntil }),
+    })
+    await loadHabits()
+  }
+
+  async function handleEditHabit(id: string, updates: Partial<Habit>) {
+    await fetch('/api/habits', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...updates }),
     })
     await loadHabits()
   }
@@ -194,6 +205,7 @@ export default function App() {
             onComplete={handleComplete}
             onPause={handlePauseHabit}
             onDelete={handleDeleteHabit}
+            onEdit={(h) => setEditingHabit(h)}
           />
         )}
         {mainTab === 'todo' && (
@@ -223,6 +235,14 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {/* ── Edit habit sheet ── */}
+      <EditHabitSheet
+        habit={editingHabit}
+        open={editingHabit !== null}
+        onClose={() => setEditingHabit(null)}
+        onSave={handleEditHabit}
+      />
 
       {/* ── Habit stats / achievements dialog ── */}
       <Dialog open={showHabitMenu} onOpenChange={setShowHabitMenu}>

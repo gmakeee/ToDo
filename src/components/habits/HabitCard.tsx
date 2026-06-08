@@ -5,7 +5,7 @@ import { Habit } from '@/types'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { Check, Pause, Play, Trash2 } from 'lucide-react'
+import { Check, Pause, Play, Trash2, Pencil } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -15,6 +15,7 @@ interface Props {
   onComplete: (id: string, mood?: number, note?: string) => void
   onPause: (id: string, pausedUntil: string | null) => void
   onDelete: (id: string) => void
+  onEdit: (habit: Habit) => void
 }
 
 const MOOD_LABELS = ['😔', '😕', '😐', '🙂', '😄']
@@ -24,7 +25,7 @@ const FREQ_LABELS: Record<string, string> = {
   monthly: 'в месяц',
 }
 
-export default function HabitCard({ habit, completedCount, onComplete, onPause, onDelete }: Props) {
+export default function HabitCard({ habit, completedCount, onComplete, onPause, onDelete, onEdit }: Props) {
   const [showComplete, setShowComplete] = useState(false)
   const [showPause, setShowPause] = useState(false)
   const [mood, setMood] = useState<number | undefined>()
@@ -123,6 +124,12 @@ export default function HabitCard({ habit, completedCount, onComplete, onPause, 
 
           {/* Actions */}
           <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => onEdit(habit)}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
             {habit.is_paused ? (
               <button
                 onClick={() => onPause(habit.id, null)}

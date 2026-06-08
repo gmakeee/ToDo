@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Check, Trash2, Plus, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, Trash2, Plus, Calendar, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { format, isPast, isToday, isTomorrow } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -18,39 +18,96 @@ interface Props {
 
 function deadlineLabel(d: string) {
   const date = new Date(d)
-  if (isToday(date)) return 'Сегодня'
-  if (isTomorrow(date)) return 'Завтра'
-  return format(date, 'd MMM', { locale: ru })
+  const time = format(date, 'HH:mm')
+  if (isToday(date)) return `Сегодня, ${time}`
+  if (isTomorrow(date)) return `Завтра, ${time}`
+  return format(date, 'd MMM, HH:mm', { locale: ru })
 }
+
+// Convert ISO/DB datetime to datetime-local input value
+function toInputValue(d: string) {
+  const date = new Date(d)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+interface TodoFormState {
+  title: string
+  description: string
+  deadline: string
+}
+
+const EMPTY_FORM: TodoFormState = { title: '', description: '', deadline: '' }
 
 export default function TodoView({ telegramId, firstName, username }: Props) {
   const [todos, setTodos] = useState<Todo[]>([])
-  const [showAdd, setShowAdd] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
-
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [deadline, setDeadline] = useState('')
+  const [dialog, setDialog] = useState<'add' | 'edit' | null>(null)
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [form, setForm] = useState<TodoFormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [])
 
   async function load() {
     const res = await fetch(`/api/todos?telegram_id=${telegramId}`)
-    const data = await res.json()
-    setTodos(data)
+    setTodos(await res.json())
   }
 
-  async function handleAdd() {
-    if (!title.trim()) return
-    setSaving(true)
-    await fetch('/api/todos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegram_id: telegramId, first_name: firstName, username, title: title.trim(), description: description.trim() || null, deadline: deadline || null }),
+  function openAdd() {
+    setForm(EMPTY_FORM)
+    setEditingTodo(null)
+    setDialog('add')
+  }
+
+  function openEdit(todo: Todo) {
+    setForm({
+      title: todo.title,
+      description: todo.description ?? '',
+      deadline: todo.deadline ? toInputValue(todo.deadline) : '',
     })
-    setTitle(''); setDescription(''); setDeadline('')
-    setSaving(false); setShowAdd(false)
+    setEditingTodo(todo)
+    setDialog('edit')
+  }
+
+  function closeDialog() {
+    setDialog(null)
+    setEditingTodo(null)
+    setForm(EMPTY_FORM)
+  }
+
+  async function handleSave() {
+    if (!form.title.trim()) return
+    setSaving(true)
+
+    if (dialog === 'add') {
+      await fetch('/api/todos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_id: telegramId,
+          first_name: firstName,
+          username,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          deadline: form.deadline || null,
+        }),
+      })
+    } else if (dialog === 'edit' && editingTodo) {
+      await fetch('/api/todos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingTodo.id,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          deadline: form.deadline || null,
+        }),
+      })
+    }
+
+    setSaving(false)
+    closeDialog()
     await load()
   }
 
@@ -73,9 +130,8 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Add button */}
       <button
-        onClick={() => setShowAdd(true)}
+        onClick={openAdd}
         className="w-full flex items-center gap-3 p-4 rounded-2xl border border-dashed border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
       >
         <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0">
@@ -84,7 +140,6 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
         <span className="text-sm">Добавить задачу...</span>
       </button>
 
-      {/* Active tasks */}
       {active.length === 0 && completed.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
           <div className="text-5xl">✅</div>
@@ -93,10 +148,9 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
       )}
 
       {active.map((todo) => (
-        <TodoCard key={todo.id} todo={todo} onToggle={handleToggle} onDelete={handleDelete} />
+        <TodoCard key={todo.id} todo={todo} onToggle={handleToggle} onEdit={openEdit} onDelete={handleDelete} />
       ))}
 
-      {/* Completed section */}
       {completed.length > 0 && (
         <div>
           <button
@@ -107,29 +161,28 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
             Выполнено ({completed.length})
           </button>
           {showCompleted && completed.map((todo) => (
-            <TodoCard key={todo.id} todo={todo} onToggle={handleToggle} onDelete={handleDelete} />
+            <TodoCard key={todo.id} todo={todo} onToggle={handleToggle} onEdit={openEdit} onDelete={handleDelete} />
           ))}
         </div>
       )}
 
-      {/* Add dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+      {/* Add / Edit dialog */}
+      <Dialog open={dialog !== null} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent className="max-w-[calc(100vw-2rem)] rounded-3xl mx-auto">
           <DialogHeader>
-            <DialogTitle>Новая задача</DialogTitle>
+            <DialogTitle>{dialog === 'edit' ? 'Редактировать задачу' : 'Новая задача'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <Input
               placeholder="Название задачи..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               className="h-11 rounded-xl"
-              autoFocus
             />
             <Textarea
               placeholder="Описание (необязательно)..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               className="resize-none rounded-xl text-sm"
               rows={2}
             />
@@ -139,17 +192,17 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
               </p>
               <input
                 type="datetime-local"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+                value={form.deadline}
+                onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
                 className="w-full h-10 rounded-xl border border-input bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <Button
-              onClick={handleAdd}
-              disabled={!title.trim() || saving}
+              onClick={handleSave}
+              disabled={!form.title.trim() || saving}
               className="w-full h-11 rounded-2xl bg-violet-500 hover:bg-violet-600 text-white font-semibold"
             >
-              Добавить
+              {dialog === 'edit' ? 'Сохранить изменения' : 'Добавить'}
             </Button>
           </div>
         </DialogContent>
@@ -158,7 +211,14 @@ export default function TodoView({ telegramId, firstName, username }: Props) {
   )
 }
 
-function TodoCard({ todo, onToggle, onDelete }: { todo: Todo; onToggle: (t: Todo) => void; onDelete: (id: string) => void }) {
+interface CardProps {
+  todo: Todo
+  onToggle: (t: Todo) => void
+  onEdit: (t: Todo) => void
+  onDelete: (id: string) => void
+}
+
+function TodoCard({ todo, onToggle, onEdit, onDelete }: CardProps) {
   const overdue = todo.deadline && !todo.completed && isPast(new Date(todo.deadline))
 
   return (
@@ -180,7 +240,7 @@ function TodoCard({ todo, onToggle, onDelete }: { todo: Todo; onToggle: (t: Todo
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{todo.description}</p>
         )}
         {todo.deadline && (
-          <p className={`text-xs mt-1 flex items-center gap-1 ${overdue ? 'text-red-400' : 'text-muted-foreground'}`}>
+          <p className={`text-xs mt-1 flex items-center gap-1 ${overdue ? 'text-red-400 font-medium' : 'text-muted-foreground'}`}>
             <Calendar className="w-3 h-3" />
             {deadlineLabel(todo.deadline)}
             {overdue && ' · просрочено'}
@@ -188,12 +248,22 @@ function TodoCard({ todo, onToggle, onDelete }: { todo: Todo; onToggle: (t: Todo
         )}
       </div>
 
-      <button
-        onClick={() => onDelete(todo.id)}
-        className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-400 transition-colors shrink-0"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      <div className="flex items-center gap-0.5 shrink-0">
+        {!todo.completed && (
+          <button
+            onClick={() => onEdit(todo)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button
+          onClick={() => onDelete(todo.id)}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-400 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   )
 }

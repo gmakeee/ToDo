@@ -134,7 +134,7 @@ export default function MoodView({ telegramId, firstName, username }: Props) {
               <button
                 key={p.id}
                 onClick={() => openPeriod(p.id)}
-                className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all active:scale-95 relative ${
                   log
                     ? 'bg-gradient-to-b from-purple-50 to-pink-50 border-purple-200 dark:from-purple-950/20 dark:to-pink-950/20 dark:border-purple-800/40'
                     : isCurrent
@@ -142,16 +142,16 @@ export default function MoodView({ telegramId, firstName, username }: Props) {
                     : 'bg-card border-border'
                 }`}
               >
-                <span className="text-xl">{log ? log.mood : p.icon}</span>
-                <div className="text-center">
-                  <p className="text-xs font-medium leading-tight">{p.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{p.hours}</p>
-                </div>
                 {log && (
-                  <div className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
+                  <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center">
                     <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                   </div>
                 )}
+                <span className="text-2xl">{log ? log.mood : p.icon}</span>
+                <div className="text-center">
+                  <p className="text-xs font-medium leading-tight">{p.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{log ? 'изменить' : p.hours}</p>
+                </div>
               </button>
             )
           })}
@@ -252,6 +252,9 @@ export default function MoodView({ telegramId, firstName, username }: Props) {
               {PERIODS.find((p) => p.id === activePeriod)?.icon}{' '}
               {PERIODS.find((p) => p.id === activePeriod)?.label}
             </DialogTitle>
+            {todayLogs.find((l) => l.period === activePeriod) && (
+              <p className="text-center text-xs text-purple-500 font-medium mt-1">Редактирование записи</p>
+            )}
           </DialogHeader>
           <div className="space-y-5 pt-1">
             <div>
