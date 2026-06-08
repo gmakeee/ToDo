@@ -169,16 +169,16 @@ export default function App() {
           <AchievementsView telegramId={telegramId} />
         </TabsContent>
 
-        <TabsList className="grid grid-cols-3 h-16 rounded-none border-t bg-background px-2 pb-2 mt-auto">
-          <TabsTrigger value="home" className="flex flex-col gap-1 h-full data-[state=active]:text-pink-500">
+        <TabsList className="grid grid-cols-3 h-16 rounded-none border-t bg-background mt-auto">
+          <TabsTrigger value="home" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
             <Home className="w-5 h-5" />
             <span className="text-xs">Главная</span>
           </TabsTrigger>
-          <TabsTrigger value="stats" className="flex flex-col gap-1 h-full data-[state=active]:text-pink-500">
+          <TabsTrigger value="stats" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
             <BarChart3 className="w-5 h-5" />
             <span className="text-xs">Статистика</span>
           </TabsTrigger>
-          <TabsTrigger value="achievements" className="flex flex-col gap-1 h-full data-[state=active]:text-pink-500">
+          <TabsTrigger value="achievements" className="flex flex-col items-center justify-center gap-1 h-full data-[state=active]:text-pink-500">
             <Trophy className="w-5 h-5" />
             <span className="text-xs">Ачивки</span>
           </TabsTrigger>
