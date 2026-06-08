@@ -1,6 +1,14 @@
 import { AchievementType, ACHIEVEMENT_META } from '@/types'
 import { createServiceClient } from './supabase'
 
+async function addXp(db: ReturnType<typeof createServiceClient>, userId: string, xp: number) {
+  const { data: user } = await db.from('users').select('xp').eq('id', userId).single()
+  if (!user) return
+  const newXp = (user.xp ?? 0) + xp
+  const newLevel = Math.floor(Math.sqrt(newXp / 100)) + 1
+  await db.from('users').update({ xp: newXp, level: newLevel }).eq('id', userId)
+}
+
 export async function checkAndGrantAchievements(userId: string, habitId: string, streak: number) {
   const db = createServiceClient()
 
@@ -22,18 +30,20 @@ export async function checkAndGrantAchievements(userId: string, habitId: string,
         .eq('user_id', userId)
         .eq('habit_id', habitId)
         .eq('type', milestone.type)
-        .single()
+        .maybeSingle()
 
       if (!existing) {
-        await db.from('achievements').insert({ user_id: userId, habit_id: habitId, type: milestone.type })
-        newAchievements.push(milestone.type)
-        const xp = ACHIEVEMENT_META[milestone.type].xp
-        await db.rpc('increment_user_xp', { p_user_id: userId, p_xp: xp })
+        const { error } = await db
+          .from('achievements')
+          .insert({ user_id: userId, habit_id: habitId, type: milestone.type })
+        if (!error) {
+          newAchievements.push(milestone.type)
+          await addXp(db, userId, ACHIEVEMENT_META[milestone.type].xp)
+        }
       }
     }
   }
 
-  // Check habit count
   const { count } = await db
     .from('habits')
     .select('id', { count: 'exact', head: true })
@@ -58,11 +68,15 @@ async function grantOnce(
     .select('id')
     .eq('user_id', userId)
     .eq('type', type)
-    .single()
+    .maybeSingle()
 
   if (!existing) {
-    await db.from('achievements').insert({ user_id: userId, habit_id: habitId, type })
-    collected.push(type)
-    await db.rpc('increment_user_xp', { p_user_id: userId, p_xp: ACHIEVEMENT_META[type].xp })
+    const { error } = await db
+      .from('achievements')
+      .insert({ user_id: userId, habit_id: habitId, type })
+    if (!error) {
+      collected.push(type)
+      await addXp(db, userId, ACHIEVEMENT_META[type].xp)
+    }
   }
 }

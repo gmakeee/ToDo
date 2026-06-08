@@ -18,7 +18,6 @@ interface Props {
   onEdit: (habit: Habit) => void
 }
 
-const MOOD_LABELS = ['😔', '😕', '😐', '🙂', '😄']
 const FREQ_LABELS: Record<string, string> = {
   daily: 'в день',
   weekly: 'в неделю',
@@ -28,7 +27,6 @@ const FREQ_LABELS: Record<string, string> = {
 export default function HabitCard({ habit, completedCount, onComplete, onPause, onDelete, onEdit }: Props) {
   const [showComplete, setShowComplete] = useState(false)
   const [showPause, setShowPause] = useState(false)
-  const [mood, setMood] = useState<number | undefined>()
   const [note, setNote] = useState('')
 
   const total = habit.times_per_period
@@ -37,9 +35,8 @@ export default function HabitCard({ habit, completedCount, onComplete, onPause, 
   const isMulti = total > 1
 
   function handleComplete() {
-    onComplete(habit.id, mood, note || undefined)
+    onComplete(habit.id, undefined, note || undefined)
     setShowComplete(false)
-    setMood(undefined)
     setNote('')
   }
 
@@ -168,30 +165,14 @@ export default function HabitCard({ habit, completedCount, onComplete, onPause, 
               </p>
             )}
           </DialogHeader>
-          <div className="space-y-5 pt-1">
-            <div>
-              <p className="text-sm text-center text-muted-foreground mb-3">Как себя чувствуешь?</p>
-              <div className="flex gap-2 justify-center">
-                {MOOD_LABELS.map((label, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setMood(i + 1)}
-                    className={`text-3xl w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
-                      mood === i + 1 ? 'bg-pink-100 dark:bg-pink-900/50 scale-110 shadow-md' : 'hover:bg-muted'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+          <div className="space-y-4 pt-1">
             <Textarea
-              placeholder="Заметка — как прошло? (необязательно)"
+              placeholder="Как прошло? (необязательно)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="resize-none text-sm rounded-2xl"
-              rows={2}
+              rows={3}
+              autoFocus
             />
 
             <button
