@@ -84,3 +84,26 @@ export interface DailyMotivation {
   text: string
   author?: string
 }
+
+export interface Todo {
+  id: string
+  user_id: string
+  title: string
+  description?: string
+  deadline?: string
+  completed: boolean
+  completed_at?: string
+  created_at: string
+}
+
+export type MoodPeriod = 'morning' | 'afternoon' | 'evening'
+
+export interface MoodLog {
+  id: string
+  user_id: string
+  period: MoodPeriod
+  mood: string
+  mood_score?: number
+  note?: string
+  logged_at: string
+}
